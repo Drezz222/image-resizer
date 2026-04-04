@@ -1,0 +1,12 @@
+{
+  "name": "image-resizer",
+  "version": "1.0.0",
+  "description": "Privacy-first image resizer — processed server-side with Sharp",
+  "type": "module",
+  "dependencies": {
+    "sharp": "^0.33.3"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
