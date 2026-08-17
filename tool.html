@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Squish — Image Resizer</title>
+<meta name="description" content="Resize, convert and compress images instantly. No sign-up. No file size limits. Private.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root {
+  --bg: #0f0f0f;
+  --surface: #181818;
+  --surface2: #222222;
+  --surface3: #2a2a2a;
+  --border: #2f2f2f;
+  --border2: #3d3d3d;
+  --text: #f0ede8;
+  --muted: #666;
+  --accent: #e8ff00;
+  --accent-dim: #b8cc00;
+  --red: #ff4444;
+  --green: #44ff88;
+  --blue: #44aaff;
+  --radius: 4px;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* ── HEADER ── */
+header {
+  display: flex;
+  align-items: center;
+  padding: 0 28px;
+  height: 54px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  gap: 20px;
+}
+.wordmark {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.6rem;
+  letter-spacing: .06em;
+  color: var(--accent);
+  line-height: 1;
+  flex-shrink: 0;
+}
+.hdr-tagline {
+  font-size: 0.72rem;
+  color: var(--muted);
+  border-left: 1px solid var(--border2);
+  padding-left: 18px;
+}
+.hdr-right {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.hdr-badge {
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 3px;
+  border: 1px solid var(--border2);
+  color: var(--muted);
+}
+
+/* ── MAIN LAYOUT ── */
+.app {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  min-height: 0;
+}
+
+/* ── LEFT PANEL ── */
+.left-panel {
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  background: var(--surface);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border2) transparent;
+}
+
+.section {
+  padding: 20px 22px;
+  border-bottom: 1px solid var(--border);
+}
+.section-label {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.85rem;
+  letter-spacing: .14em;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+
+/* Drop Zone */
+.drop-zone {
+  border: 1.5px dashed var(--border2);
+  border-radius: var(--radius);
+  padding: 32px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all .2s;
+  position: relative;
+  overflow: hidden;
+}
+.drop-zone::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform .3s ease;
+}
+.drop-zone:hover::after, .drop-zone.over::after { transform: scaleX(1); }
+.drop-zone:hover, .drop-zone.over {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 4%, transparent);
+}
+.dz-icon { font-size: 2.2rem; margin-bottom: 10px; }
+.dz-text { font-size: 0.82rem; color: var(--muted); line-height: 1.6; }
+.dz-text strong { color: var(--accent); cursor: pointer; }
+.dz-types { font-size: 0.65rem; color: var(--border2); margin-top: 6px; letter-spacing: .06em; }
+#file-input { display: none; }
+
+/* Image info strip */
+.img-info {
+  display: none;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  gap: 12px;
+  align-items: center;
+}
+.img-info.show { display: flex; }
+.img-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 3px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid var(--border2);
+}
+.img-meta { flex: 1; min-width: 0; }
+.img-name {
+  font-size: 0.78rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 2px;
+}
+.img-dims { font-family: 'DM Mono', monospace; font-size: 0.68rem; color: var(--muted); }
+.clear-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 2px;
+  transition: color .15s;
+  flex-shrink: 0;
+}
+.clear-btn:hover { color: var(--red); }
+
+/* Mode tabs */
+.mode-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+.mode-tab {
+  flex: 1;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: .04em;
+  padding: 8px 6px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all .15s;
+  text-align: center;
+}
+.mode-tab:hover { color: var(--text); border-color: var(--border2); }
+.mode-tab.active {
+  background: var(--accent);
+  color: #000;
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+/* Mode panels */
+.mode-panel { display: none; }
+.mode-panel.active { display: block; }
+
+/* Inputs */
+.inp-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.inp-label {
+  font-size: 0.7rem;
+  color: var(--muted);
+  min-width: 52px;
+  flex-shrink: 0;
+}
+.inp {
+  flex: 1;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.82rem;
+  padding: 8px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  color: var(--text);
+  outline: none;
+  transition: border-color .15s;
+  width: 100%;
+}
+.inp:focus { border-color: var(--accent); }
+.inp::placeholder { color: var(--border2); }
+
+.lock-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border2);
+  background: var(--surface2);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .15s;
+  flex-shrink: 0;
+}
+.lock-btn.locked { border-color: var(--accent); color: var(--accent); }
+
+/* Percentage slider */
+.pct-display {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 3rem;
+  color: var(--accent);
+  text-align: center;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+.pct-sub { font-size: 0.7rem; color: var(--muted); text-align: center; margin-bottom: 14px; font-family: 'DM Mono', monospace; }
+.slider {
+  width: 100%;
+  -webkit-appearance: none;
+  height: 3px;
+  background: var(--border2);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: 3px solid var(--bg);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: 3px solid var(--bg);
+}
+
+/* Presets grid */
+.presets-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.preset-btn {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.7rem;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border2);
+  background: var(--surface2);
+  color: var(--muted);
+  cursor: pointer;
+  transition: all .15s;
+  text-align: left;
+  line-height: 1.3;
+}
+.preset-btn:hover { border-color: var(--border2); color: var(--text); }
+.preset-btn.selected { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.preset-dim { font-family: 'DM Mono', monospace; font-size: 0.62rem; color: var(--muted); display: block; margin-top: 1px; }
+.preset-btn.selected .preset-dim { color: var(--accent-dim); }
+
+/* Format & quality */
+.select {
+  flex: 1;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.82rem;
+  padding: 8px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  color: var(--text);
+  outline: none;
+  cursor: pointer;
+  transition: border-color .15s;
+}
+.select:focus { border-color: var(--accent); }
+
+.quality-track {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+.q-val {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.78rem;
+  color: var(--accent);
+  min-width: 28px;
+  text-align: right;
+}
+
+/* Fit mode */
+.fit-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 4px;
+}
+.fit-btn {
+  font-size: 0.7rem;
+  padding: 7px 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all .15s;
+  font-family: 'DM Sans', sans-serif;
+}
+.fit-btn.active { border-color: var(--accent); color: var(--accent); }
+
+/* Checkbox option */
+.opt-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.opt-row input { accent-color: var(--accent); cursor: pointer; }
+.opt-row:hover { color: var(--text); }
+
+/* Action button */
+.resize-btn {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.3rem;
+  letter-spacing: .1em;
+  width: 100%;
+  padding: 15px;
+  border-radius: var(--radius);
+  border: none;
+  background: var(--accent);
+  color: #000;
+  cursor: pointer;
+  transition: all .2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.resize-btn:hover { background: #fff; }
+.resize-btn:disabled { opacity: .4; cursor: not-allowed; background: var(--accent); }
+.resize-btn .spinner {
+  width: 16px; height: 16px;
+  border: 2px solid rgba(0,0,0,.3);
+  border-top-color: #000;
+  border-radius: 50%;
+  animation: spin .6s linear infinite;
+  display: none;
+}
+.resize-btn.loading .spinner { display: block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── RIGHT PANEL ── */
+.right-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.preview-header {
+  padding: 14px 22px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface);
+  flex-shrink: 0;
+}
+.preview-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.9rem;
+  letter-spacing: .1em;
+  color: var(--muted);
+}
+.preview-actions { margin-left: auto; display: flex; gap: 8px; }
+.preview-btn {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all .15s;
+}
+.preview-btn:hover { border-color: var(--border2); color: var(--text); }
+.preview-btn.accent { background: var(--accent); border-color: var(--accent); color: #000; font-weight: 600; }
+.preview-btn.accent:hover { background: #fff; border-color: #fff; }
+
+.preview-area {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border2) transparent;
+}
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  color: var(--border2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.empty-state-icon { font-size: 4rem; }
+.empty-state-text {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.1rem;
+  letter-spacing: .1em;
+  color: var(--border2);
+}
+
+/* Preview image wrapper */
+.preview-wrap {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+  height: 100%;
+}
+.preview-wrap.show { display: flex; }
+
+/* Before/after slider */
+.compare-wrap {
+  flex: 1;
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  background: repeating-conic-gradient(#1a1a1a 0% 25%, #222 0% 50%) 0 0 / 20px 20px;
+  cursor: col-resize;
+  user-select: none;
+}
+.compare-img {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.compare-before {
+  z-index: 1;
+}
+.compare-after {
+  z-index: 2;
+  clip-path: inset(0 50% 0 0);
+}
+.compare-divider {
+  position: absolute;
+  top: 0; bottom: 0;
+  left: 50%;
+  width: 2px;
+  background: var(--accent);
+  z-index: 10;
+  cursor: col-resize;
+}
+.compare-handle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  color: #000;
+  font-weight: 700;
+  box-shadow: 0 0 0 3px rgba(0,0,0,.5);
+}
+.compare-label {
+  position: absolute;
+  top: 10px;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 3px;
+  z-index: 20;
+  pointer-events: none;
+}
+.compare-label.before { left: 10px; background: rgba(0,0,0,.7); color: var(--muted); }
+.compare-label.after  { right: 10px; background: var(--accent); color: #000; }
+
+/* Stats bar */
+.stats-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  font-family: 'DM Mono', monospace;
+  font-size: 0.72rem;
+  overflow: hidden;
+}
+.stat {
+  flex: 1;
+  padding: 10px 16px;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.stat:last-child { border-right: none; }
+.stat-lbl { font-size: 0.58rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.stat-val { font-size: 0.82rem; color: var(--text); }
+.stat-val.good { color: var(--green); }
+.stat-val.accent { color: var(--accent); }
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(16px);
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 11px 18px;
+  font-size: 0.78rem;
+  box-shadow: 0 8px 32px rgba(0,0,0,.6);
+  opacity: 0;
+  transition: all .25s;
+  z-index: 9999;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.ok  { border-color: var(--green); color: var(--green); }
+.toast.err { border-color: var(--red); color: var(--red); }
+
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+@media(max-width:720px){
+  .app{grid-template-columns:1fr;grid-template-rows:auto 1fr;}
+  .left-panel{max-height:60vh;border-right:none;border-bottom:1px solid var(--border);}
+  .hdr-tagline{display:none;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wordmark">Squish</div>
+  <div class="hdr-tagline">Image resizer — files processed privately on our server</div>
+  <div class="hdr-right">
+    <div class="hdr-badge">Free</div>
+    <div class="hdr-badge">No sign-up</div>
+  </div>
+</header>
+
+<div class="app">
+
+  <!-- ── LEFT PANEL ── -->
+  <div class="left-panel">
+
+    <!-- Upload -->
+    <div class="section">
+      <div class="section-label">Image</div>
+      <div class="drop-zone" id="drop-zone">
+        <div class="dz-icon">⚡</div>
+        <div class="dz-text">Drop image here or <strong id="browse-btn">browse</strong></div>
+        <div class="dz-types">JPG · PNG · WEBP · AVIF · GIF · TIFF · BMP</div>
+        <input type="file" id="file-input" accept="image/*">
+      </div>
+      <div class="img-info" id="img-info" style="margin-top:12px">
+        <img class="img-thumb" id="img-thumb" src="" alt="">
+        <div class="img-meta">
+          <div class="img-name" id="img-name"></div>
+          <div class="img-dims" id="img-dims"></div>
+        </div>
+        <button class="clear-btn" onclick="clearImage()" title="Remove image">✕</button>
+      </div>
+    </div>
+
+    <!-- Mode -->
+    <div class="section">
+      <div class="section-label">Resize Mode</div>
+      <div class="mode-tabs">
+        <button class="mode-tab active" data-mode="dimensions" onclick="setMode('dimensions',this)">Dimensions</button>
+        <button class="mode-tab" data-mode="percentage" onclick="setMode('percentage',this)">Percentage</button>
+        <button class="mode-tab" data-mode="preset" onclick="setMode('preset',this)">Presets</button>
+      </div>
+
+      <!-- Dimensions panel -->
+      <div class="mode-panel active" id="panel-dimensions">
+        <div class="inp-row">
+          <span class="inp-label">Width</span>
+          <input type="number" class="inp" id="dim-w" placeholder="auto" min="1" max="10000" oninput="onDimInput('w')">
+          <span style="font-size:0.7rem;color:var(--muted)">px</span>
+        </div>
+        <div class="inp-row">
+          <span class="inp-label">Height</span>
+          <input type="number" class="inp" id="dim-h" placeholder="auto" min="1" max="10000" oninput="onDimInput('h')">
+          <span style="font-size:0.7rem;color:var(--muted)">px</span>
+          <button class="lock-btn locked" id="lock-btn" onclick="toggleLock()" title="Lock aspect ratio">🔒</button>
+        </div>
+        <div style="margin-top:6px">
+          <label class="opt-row">
+            <input type="checkbox" id="no-enlarge" checked>
+            Don't enlarge if smaller than target
+          </label>
+        </div>
+      </div>
+
+      <!-- Percentage panel -->
+      <div class="mode-panel" id="panel-percentage">
+        <div class="pct-display" id="pct-display">50%</div>
+        <div class="pct-sub" id="pct-sub">— × —</div>
+        <input type="range" class="slider" id="pct-slider" min="1" max="200" value="50" oninput="onPctChange()">
+        <div style="display:flex;justify-content:space-between;margin-top:6px">
+          <span style="font-size:0.62rem;color:var(--muted)">1%</span>
+          <span style="font-size:0.62rem;color:var(--muted)">200%</span>
+        </div>
+      </div>
+
+      <!-- Preset panel -->
+      <div class="mode-panel" id="panel-preset">
+        <div class="presets-grid" id="presets-grid"></div>
+      </div>
+    </div>
+
+    <!-- Format & Quality -->
+    <div class="section">
+      <div class="section-label">Output</div>
+      <div class="inp-row" style="margin-bottom:12px">
+        <span class="inp-label">Format</span>
+        <select class="select" id="format-sel">
+          <option value="original">Original format</option>
+          <option value="jpeg">JPEG</option>
+          <option value="png">PNG</option>
+          <option value="webp">WebP (recommended)</option>
+          <option value="avif">AVIF (smallest)</option>
+        </select>
+      </div>
+      <div class="inp-label" style="margin-bottom:8px">Quality</div>
+      <div class="quality-track">
+        <input type="range" class="slider" id="quality-slider" min="1" max="100" value="85" oninput="document.getElementById('q-val').textContent=this.value">
+        <span class="q-val" id="q-val">85</span>
+      </div>
+    </div>
+
+    <!-- Fit mode -->
+    <div class="section">
+      <div class="section-label">Fit Mode</div>
+      <div class="fit-grid">
+        <button class="fit-btn active" data-fit="inside" onclick="setFit('inside',this)">Inside<br><span style="font-size:0.62rem;opacity:.6">preserve ratio, no crop</span></button>
+        <button class="fit-btn" data-fit="cover" onclick="setFit('cover',this)">Cover<br><span style="font-size:0.62rem;opacity:.6">fill & crop edges</span></button>
+        <button class="fit-btn" data-fit="fill" onclick="setFit('fill',this)">Fill<br><span style="font-size:0.62rem;opacity:.6">stretch to fit exactly</span></button>
+        <button class="fit-btn" data-fit="contain" onclick="setFit('contain',this)">Contain<br><span style="font-size:0.62rem;opacity:.6">letterbox with padding</span></button>
+      </div>
+    </div>
+
+    <!-- Action -->
+    <div class="section" style="border-bottom:none">
+      <button class="resize-btn" id="resize-btn" onclick="doResize()">
+        <div class="spinner"></div>
+        <span id="resize-btn-text">Resize Image</span>
+      </button>
+    </div>
+
+  </div>
+
+  <!-- ── RIGHT PANEL ── -->
+  <div class="right-panel">
+    <div class="preview-header">
+      <span class="preview-title">Preview</span>
+      <div class="preview-actions">
+        <button class="preview-btn" id="copy-btn" onclick="copyResult()" style="display:none">Copy</button>
+        <button class="preview-btn accent" id="download-btn" onclick="downloadResult()" style="display:none">Download</button>
+      </div>
+    </div>
+
+    <div class="preview-area" id="preview-area">
+      <div class="empty-state" id="empty-state">
+        <div class="empty-state-icon">🖼️</div>
+        <div class="empty-state-text">Upload an image to start</div>
+      </div>
+
+      <div class="preview-wrap" id="preview-wrap">
+        <div class="compare-wrap" id="compare-wrap">
+          <img class="compare-img compare-before" id="before-img" src="" alt="Original">
+          <img class="compare-img compare-after"  id="after-img"  src="" alt="Resized">
+          <div class="compare-divider" id="compare-divider">
+            <div class="compare-handle">◀▶</div>
+          </div>
+          <div class="compare-label before">Original</div>
+          <div class="compare-label after">Resized</div>
+        </div>
+        <div class="stats-bar" id="stats-bar">
+          <div class="stat"><span class="stat-lbl">Original</span><span class="stat-val" id="stat-orig-size">—</span></div>
+          <div class="stat"><span class="stat-lbl">Output</span><span class="stat-val accent" id="stat-out-size">—</span></div>
+          <div class="stat"><span class="stat-lbl">Saved</span><span class="stat-val good" id="stat-saved">—</span></div>
+          <div class="stat"><span class="stat-lbl">Dimensions</span><span class="stat-val" id="stat-dims">—</span></div>
+          <div class="stat"><span class="stat-lbl">Format</span><span class="stat-val" id="stat-format">—</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── PRESETS ──
+const PRESETS = [
+  {id:'twitter-header',  label:'Twitter Header',    w:1500, h:500 },
+  {id:'twitter-post',    label:'Twitter Post',       w:1200, h:675 },
+  {id:'instagram-sq',    label:'Instagram Square',   w:1080, h:1080},
+  {id:'instagram-port',  label:'Instagram Portrait', w:1080, h:1350},
+  {id:'instagram-land',  label:'Instagram Landscape',w:1080, h:566 },
+  {id:'facebook-cover',  label:'Facebook Cover',     w:820,  h:312 },
+  {id:'facebook-post',   label:'Facebook Post',      w:1200, h:630 },
+  {id:'linkedin-cover',  label:'LinkedIn Cover',     w:1584, h:396 },
+  {id:'linkedin-post',   label:'LinkedIn Post',      w:1200, h:627 },
+  {id:'og-image',        label:'OG / Meta Image',    w:1200, h:630 },
+  {id:'favicon',         label:'Favicon',            w:32,   h:32  },
+  {id:'thumbnail',       label:'Thumbnail',          w:300,  h:300 },
+  {id:'hd',              label:'HD 720p',            w:1280, h:720 },
+  {id:'fhd',             label:'Full HD 1080p',      w:1920, h:1080},
+];
+
+// ── STATE ──
+let currentFile   = null;
+let originalUrl   = null;
+let resultBlob    = null;
+let resultUrl     = null;
+let origW = 0, origH = 0;
+let aspectRatio   = 1;
+let locked        = true;
+let currentMode   = 'dimensions';
+let currentFit    = 'inside';
+let selectedPreset = null;
+let compareX      = 50;
+let dragging      = false;
+
+// ── INIT ──
+function init() {
+  buildPresets();
+  setupCompare();
+  setupFileHandlers();
+}
+
+function buildPresets() {
+  const grid = document.getElementById('presets-grid');
+  PRESETS.forEach(p => {
+    const btn = document.createElement('button');
+    btn.className = 'preset-btn';
+    btn.dataset.id = p.id;
+    btn.innerHTML = `${p.label}<span class="preset-dim">${p.w} × ${p.h}</span>`;
+    btn.onclick = () => selectPreset(p, btn);
+    grid.appendChild(btn);
+  });
+}
+
+function selectPreset(p, btn) {
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  selectedPreset = p.id;
+}
+
+// ── FILE HANDLERS ──
+function setupFileHandlers() {
+  const dz = document.getElementById('drop-zone');
+  document.getElementById('browse-btn').addEventListener('click', e => { e.stopPropagation(); document.getElementById('file-input').click(); });
+  dz.addEventListener('click', () => document.getElementById('file-input').click());
+  document.getElementById('file-input').addEventListener('change', e => { if (e.target.files[0]) loadFile(e.target.files[0]); e.target.value=''; });
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('over'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('over'));
+  dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('over'); if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]); });
+}
+
+function loadFile(file) {
+  if (!file.type.startsWith('image/')) return showToast('Please upload an image file', 'err');
+  currentFile = file;
+  const reader = new FileReader();
+  reader.onload = e => {
+    originalUrl = e.target.result;
+    const img = new Image();
+    img.onload = () => {
+      origW = img.naturalWidth;
+      origH = img.naturalHeight;
+      aspectRatio = origW / origH;
+
+      // Update UI
+      document.getElementById('img-thumb').src = originalUrl;
+      document.getElementById('img-name').textContent = file.name;
+      document.getElementById('img-dims').textContent = `${origW} × ${origH} · ${fmtSize(file.size)}`;
+      document.getElementById('img-info').classList.add('show');
+
+      // Default dims
+      document.getElementById('dim-w').value = origW;
+      document.getElementById('dim-h').value = origH;
+      updatePctSub();
+
+      // Show before image
+      document.getElementById('before-img').src = originalUrl;
+      document.getElementById('after-img').src  = originalUrl;
+      document.getElementById('empty-state').style.display  = 'none';
+      document.getElementById('preview-wrap').classList.add('show');
+      setCompare(50);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearImage() {
+  currentFile = null; originalUrl = null;
+  document.getElementById('img-info').classList.remove('show');
+  document.getElementById('preview-wrap').classList.remove('show');
+  document.getElementById('empty-state').style.display = '';
+  document.getElementById('download-btn').style.display = 'none';
+  document.getElementById('copy-btn').style.display = 'none';
+  resultBlob = null; resultUrl = null;
+  document.getElementById('after-img').src = '';
+  document.getElementById('before-img').src = '';
+  clearStats();
+}
+
+// ── MODE ──
+function setMode(mode, btn) {
+  currentMode = mode;
+  document.querySelectorAll('.mode-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.mode-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + mode).classList.add('active');
+}
+
+// ── DIMENSIONS ──
+function onDimInput(which) {
+  if (!locked || !origW) return;
+  if (which === 'w') {
+    const w = parseInt(document.getElementById('dim-w').value);
+    if (w) document.getElementById('dim-h').value = Math.round(w / aspectRatio);
+  } else {
+    const h = parseInt(document.getElementById('dim-h').value);
+    if (h) document.getElementById('dim-w').value = Math.round(h * aspectRatio);
+  }
+}
+
+function toggleLock() {
+  locked = !locked;
+  const btn = document.getElementById('lock-btn');
+  btn.textContent = locked ? '🔒' : '🔓';
+  btn.classList.toggle('locked', locked);
+}
+
+// ── PERCENTAGE ──
+function onPctChange() {
+  const pct = parseInt(document.getElementById('pct-slider').value);
+  document.getElementById('pct-display').textContent = pct + '%';
+  updatePctSub();
+}
+
+function updatePctSub() {
+  if (!origW) return;
+  const pct = parseInt(document.getElementById('pct-slider').value) / 100;
+  const w = Math.round(origW * pct);
+  const h = Math.round(origH * pct);
+  document.getElementById('pct-sub').textContent = `${w} × ${h} px`;
+}
+
+// ── FIT ──
+function setFit(fit, btn) {
+  currentFit = fit;
+  document.querySelectorAll('.fit-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ── COMPARE SLIDER ──
+function setupCompare() {
+  const wrap = document.getElementById('compare-wrap');
+  const div  = document.getElementById('compare-divider');
+
+  function move(x) {
+    const rect = wrap.getBoundingClientRect();
+    const pct  = Math.max(2, Math.min(98, ((x - rect.left) / rect.width) * 100));
+    setCompare(pct);
+  }
+
+  div.addEventListener('mousedown',  () => dragging = true);
+  wrap.addEventListener('mousedown', e => { dragging = true; move(e.clientX); });
+  window.addEventListener('mousemove', e => { if (dragging) move(e.clientX); });
+  window.addEventListener('mouseup',   () => dragging = false);
+
+  div.addEventListener('touchstart',  e => { dragging = true; e.preventDefault(); }, {passive:false});
+  wrap.addEventListener('touchmove',  e => { if (dragging) move(e.touches[0].clientX); e.preventDefault(); }, {passive:false});
+  window.addEventListener('touchend', () => dragging = false);
+}
+
+function setCompare(pct) {
+  compareX = pct;
+  document.getElementById('compare-divider').style.left = pct + '%';
+  document.getElementById('after-img').style.clipPath   = `inset(0 ${100 - pct}% 0 0)`;
+}
+
+// ── RESIZE ──
+async function doResize() {
+  if (!currentFile) return showToast('Upload an image first', 'err');
+
+  const btn  = document.getElementById('resize-btn');
+  const txt  = document.getElementById('resize-btn-text');
+  btn.disabled = true;
+  btn.classList.add('loading');
+  txt.textContent = 'Resizing…';
+
+  try {
+    const fd = new FormData();
+    fd.append('image', currentFile);
+    fd.append('mode',  currentMode);
+    fd.append('fit',   currentFit);
+    fd.append('format', document.getElementById('format-sel').value);
+    fd.append('quality', document.getElementById('quality-slider').value);
+    fd.append('noEnlarge', document.getElementById('no-enlarge').checked ? 'true' : 'false');
+
+    if (currentMode === 'dimensions') {
+      fd.append('width',  document.getElementById('dim-w').value || '');
+      fd.append('height', document.getElementById('dim-h').value || '');
+    } else if (currentMode === 'percentage') {
+      fd.append('percentage', document.getElementById('pct-slider').value);
+    } else if (currentMode === 'preset') {
+      if (!selectedPreset) { showToast('Select a preset first', 'err'); return; }
+      fd.append('preset', selectedPreset);
+    }
+
+    const resp = await fetch('/api/resize', { method: 'POST', body: fd });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(err.error || 'Resize failed');
+    }
+
+    const origSize = parseInt(resp.headers.get('X-Original-Size') || '0');
+    const outSize  = parseInt(resp.headers.get('X-Output-Size')   || '0');
+    const outW     = resp.headers.get('X-Output-Width')  || '?';
+    const outH     = resp.headers.get('X-Output-Height') || '?';
+    const outFmt   = resp.headers.get('X-Output-Format') || '?';
+
+    resultBlob = await resp.blob();
+    if (resultUrl) URL.revokeObjectURL(resultUrl);
+    resultUrl = URL.createObjectURL(resultBlob);
+
+    // Update preview
+    document.getElementById('after-img').src = resultUrl;
+    setCompare(50);
+
+    // Stats
+    const saved = origSize > 0 ? Math.round((1 - outSize / origSize) * 100) : 0;
+    document.getElementById('stat-orig-size').textContent = fmtSize(origSize || currentFile.size);
+    document.getElementById('stat-out-size').textContent  = fmtSize(outSize);
+    document.getElementById('stat-saved').textContent     = saved > 0 ? `${saved}% smaller` : `${Math.abs(saved)}% larger`;
+    document.getElementById('stat-dims').textContent      = `${outW} × ${outH}`;
+    document.getElementById('stat-format').textContent    = outFmt.toUpperCase();
+
+    document.getElementById('download-btn').style.display = '';
+    document.getElementById('copy-btn').style.display = '';
+
+    showToast('Done! Drag the slider to compare', 'ok');
+  } catch(e) {
+    showToast('Error: ' + e.message, 'err');
+    console.error(e);
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('loading');
+    txt.textContent = 'Resize Image';
+  }
+}
+
+// ── DOWNLOAD / COPY ──
+function downloadResult() {
+  if (!resultBlob) return;
+  const ext  = resultBlob.type.split('/')[1] || 'jpg';
+  const base = currentFile?.name.replace(/\.[^.]+$/, '') || 'image';
+  const a    = Object.assign(document.createElement('a'), { href: resultUrl, download: `${base}-resized.${ext}` });
+  a.click();
+}
+
+async function copyResult() {
+  if (!resultBlob) return;
+  try {
+    await navigator.clipboard.write([new ClipboardItem({ [resultBlob.type]: resultBlob })]);
+    showToast('Copied to clipboard!', 'ok');
+  } catch(e) {
+    showToast('Copy failed — use Download instead', 'err');
+  }
+}
+
+// ── HELPERS ──
+function clearStats() {
+  ['stat-orig-size','stat-out-size','stat-saved','stat-dims','stat-format'].forEach(id => {
+    document.getElementById(id).textContent = '—';
+  });
+}
+
+function fmtSize(b) {
+  if (!b) return '—';
+  if (b < 1024)    return b + ' B';
+  if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+  return (b / 1048576).toFixed(2) + ' MB';
+}
+
+let toastT;
+function showToast(msg, type = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `toast show ${type}`;
+  clearTimeout(toastT);
+  toastT = setTimeout(() => el.className = 'toast', 3500);
+}
+
+init();
+</script>
+</body>
+</html>
