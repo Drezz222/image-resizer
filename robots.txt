@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://image-resizer-adm9563eg-drezz222s-projects.vercel.app/sitemap.xml
